@@ -7,4 +7,7 @@ Maintainer: Marco Portmann <marcoportmann@hotmail.com>
 Description: The package prints several results of different regression models in a clear table and enables them to be exported to publications.
 License: GNU GPLv3
 Encoding: UTF-8
+Imports:
+    Hmisc, abind
 LazyData: true
+RoxygenNote: 6.1.1
