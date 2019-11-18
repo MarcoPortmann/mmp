@@ -1,520 +1,9 @@
 #! multi-model print
 
 # Author: Marco Portmann
-# Last change: 02.11.2017
+# Last change: 05.11.2019
 #
 #
-
-
-#.........................................................
-#
-#!2 Extract model information from different classes
-#
-#
-ModelPrintObject <- function(x) UseMethod('ModelPrintObject')
-#
-
-ModelPrintObject.default <- function(x)
-{
-  return(x)
-}
-
-ModelPrintObject.rms <- function(x)
-{
-  x$Statistics <- append(x$Statistics,
-                         list(
-                              R2 = x$stats['R2'],
-                              LogLik = x$stats['Model L.R.'],
-                              G = x$stats['g'],
-                              Sigma = x$stats['Sigma']
-                             ))
-  if (!is.null(x$orig.var) & is.null(x$clusterInfo))
-  {
-  x$Statistics <- append(x$Statistics,
-                         list(
-                              StandardErrorInfo = 'SE by robcov()'
-                             ))
-  }
-  if (!is.null(x$clusterInfo))
-  {
-  x$Statistics <- append(x$Statistics,
-                         list(
-                              StandardErrorInfo = paste('Clustered on ', x$clusterInfo$name, '; n = ',  x$clusterInfo$n, sep ='')
-                             ))
-  }
-  if (is.null(x$CoefValues))
-  {
-  CoefTemp     <- cbind(Coefficient = x$coefficients,
-                        SE = sqrt(diag(x$var)),                 # Std. Error
-                        TStat = NA,
-                        Normal= x$coefficients/sqrt(diag(x$var)),  # Normal
-                        PValue = NA,
-                        SpecialText = NA
-                       )
-  CoefTemp[, 'PValue'] <- unlist(lapply(CoefTemp[, 'Normal'], GetPValueFromNormal))
-  x$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-  }
-  x$DependentVariable <- all.vars(x$terms)[1]
-  return(x)
-}
-
-ModelPrintObject.lrm <- function(x)
-{
-  x$Statistics$Freq <- x$freq
-  x$Statistics <- append(x$Statistics,
-                         list(
-                              NObs = x$stats['Obs'],
-                              Brier = x$stats['Brier'],
-                              Gamma = x$stats['Gamma'],
-                              MaxDeriv = x$stats['Max Deriv'],
-                              P = x$stats['P'],
-                              C = x$stats['C'],
-                              Dxy = x$stats['Dxy'],
-                              Taua = x$stats['Tau-a'],
-                              Gr = x$stats['gr'],
-                              Gp = x$stats['gp'],
-                              Freq = x$freq,
-                              Weights = ifelse(is.null(x$weights),"no", "yes")
-                             ))
-  x$ModelType <- 'Logistic regression model'
-  NextMethod()
-}
-
-ModelPrintObject.ols <- function(x)
-{
-  x$Statistics <- append(x$Statistics,
-                         list(
-                              NObs = x$stats['n'],
-                              R2 = x$stats['R2'],
-                              Sigma = x$stats['Sigma'],
-                              DF = x$df.residual,
-                              Weights = ifelse(is.null(x$weights),"no", "yes")
-                             ))
-
-  x$Statistics$AdjR2 <- 1 - (1-x$Statistics$R2)*(x$Statistics$NObs-1)/(x$Statistics$DF)
-
-  CoefTemp     <- cbind(Coefficient = x$coefficients,
-                        SE = sqrt(diag(x$var)),                 # Std. Error
-                        TStat = x$coefficients/sqrt(diag(x$var)),
-                        Normal= NA,  # Normal
-                        PValue = NA,
-                        SpecialText = NA
-                       )
-
-  CoefTemp[, 'PValue'] <- unlist(lapply(CoefTemp[, 'TStat'], GetPValueFromTStat, DF =  x$Statistics$DF ))
-  x$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-  x$DependentVariable <- all.vars(x$terms)[1]
-  x$ModelType <- 'Ordinary least squares regression model'
-  NextMethod()
-}
-
-ModelPrintObject.felm <- function(x)
-{
-  xsum <- summary(x)
-
-  x$Statistics <- append(x$Statistics,
-                         list(
-                              NObs =xsum$N,
-                              R2 = xsum$r.squared,
-                              Sigma = xsum$sigma,
-                              DF = xsum$df[[1]],
-                              AdjR2 = xsum$adj.r.squared,
-                              Weights = ifelse(is.null(x$weights),"no", "yes")
-                             ))
-
-  CoefTemp     <- cbind(Coefficient = xsum$coefficients[, 1],
-                        SE =  xsum$coefficients[, 2],                 # Std. Error
-                        TStat =  xsum$coefficients[, 3],
-                        Normal= NA,  # Normal
-                        PValue =  xsum$coefficients[, 4],
-                        SpecialText = NA
-                       )
-  rownames(CoefTemp) <- rownames(xsum$coefficients)
-
-  if (!is.null(x$fe) && length(x$fe)>0)
-  {
-    x$FixedEffects <- names(x$fe)
-    CoefTemp <- rbind(CoefTemp,  matrix(NA, nrow = length(x$FixedEffects), ncol = 6, dimnames = list(paste0('FE>>', x$FixedEffects), NULL)))
-  }
-
-  x$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-  x$DependentVariable <- x$lhs
-  if (!is.null(x$clustervar)) x$Statistics$StandardErrorInfo <- paste0('Clustered on: ', paste(names(x$clustervar), collapse = ', '))
-
-  x$ModelType <- 'Ordinary least squares regression model'
-  NextMethod()
-}
-
-ModelPrintObject.summary.felm <- function(x)
-{
-  #xsum <- summary(x)
-
-  x$Statistics <- append(x$Statistics,
-                         list(
-                              NObs =x$N,
-                              R2 = x$r.squared,
-                              Sigma = x$sigma,
-                              DF = x$df[[1]],
-                              AdjR2 = x$adj.r.squared,
-                              Weights = ifelse(is.null(x$weights),"no", "yes")
-                             ))
-
-  CoefTemp     <- cbind(Coefficient = x$coefficients[, 1],
-                        SE =  x$coefficients[, 2],                 # Std. Error
-                        TStat =  x$coefficients[, 3],
-                        Normal= NA,  # Normal
-                        PValue =  x$coefficients[, 4],
-                        SpecialText = NA
-                       )
-  rownames(CoefTemp) <- rownames(x$coefficients)
-
-  if (!is.null(x$fe) && length(x$fe)>0)
-  {
-    x$FixedEffects <- names(x$fe)
-    CoefTemp <- rbind(CoefTemp,  matrix(NA, nrow = length(x$FixedEffects), ncol = 6, dimnames = list(paste0('FE>>', x$FixedEffects), NULL)))
-  }
-
-  x$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-  x$DependentVariable <- x$lhs
-  if (length(grep('obust', colnames(x$coefficients)[2]))>0) x$Statistics$StandardErrorInfo <- 'Robust standard errors'
-
-  if (!is.null(x$clustervar)) x$Statistics$StandardErrorInfo <- paste0('Clustered on: ', paste(names(x$clustervar), collapse = ', '))
-
-  x$ModelType <- 'Ordinary least squares regression model'
-  NextMethod()
-}
-
-
-
-ModelPrintObject.plm <- function(x)
-{
-  warning('plm objects are processed slowly and incompletely.')
-  xsum <- summary(x)
-  x$Statistics <- append(x$Statistics,
-                         list(
-                              NObs = nobs(x),
-                              R2 = as.numeric(xsum$r.squared['rsq']),
-                              DF = x$df.residual,
-                              FStat = xsum$fstatistic,
-                              AdjR2 = as.numeric(xsum$r.squared['adjrsq']),
-                              Weights = ifelse(is.null(x$weights),"no", "yes")
-                             ))
-
-
-  CoefTemp     <- cbind(Coefficient = xsum$coefficients[,1],
-                        SE = xsum$coefficients[,2],                 # Std. Error
-                        TStat =  xsum$coefficients[,3],
-                        Normal= NA,  # Normal
-                        PValue =  xsum$coefficients[,4],
-                        SpecialText = NA
-                       )
-  rownames(CoefTemp) <- rownames(xsum$coefficients)
-
-  x$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-
-  x$DependentVariable <- all.vars(x$formula)[1]
-  x$ModelType <- paste0('Panel data:', paste(x$args[unlist(lapply(x$args, function(x)(!is.null(x))))], collapse = '; '))
-  NextMethod()
-}
-
-
-
-
-ModelPrintObject.lm <- function(x)
-{
-
-  x$Statistics <- append(x$Statistics,
-                         list(
-                              NObs = length(residuals(summary(x))),
-                              R2 = summary(x)$r.squared,
-                              AdjR2 = summary(x)$adj.r.squared,
-                              Sigma = summary(x)$sigma,
-                              DF = summary(x)$df[2],
-                              FStat = summary(x)$fstatistic[1],
-                              Weights = ifelse(is.null(x$weights),"no", "yes")
-                             ))
-
-  # The following might looks complicated. The aim is to make sure that
-  # NA variables are not dropped from the model.
-
-  CoefTemp <- as.matrix(x$coefficients)
-  CoefTemp <- merge(CoefTemp, summary(x)$coefficients[,c(2,3)], by = 'row.names', all.x = T, sort = F)
-  rownames(CoefTemp) <- CoefTemp$Row.names
-  CoefTemp$Row.names <- NULL
-
-  loc <- grep("^\\(Intercept\\)$", rownames(CoefTemp), perl = T)
-  if (length(loc)>0) rownames(CoefTemp)[loc] <- "Intercept"
-
-  CoefTemp <- cbind(CoefTemp, Normal = NA, PValue = NA,  SpecialText = NA)
-  colnames(CoefTemp) <- c('Coefficient', 'SE', 'TStat', 'Normal', 'PValue', 'SpecialText')
-
-  CoefTemp[, 'PValue'] <- unlist(lapply(CoefTemp[, 'TStat'], GetPValueFromTStat, DF =  x$Statistics$DF ))
-
-  x$CoefValues <- array(unlist(CoefTemp), dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-  x$DependentVariable <- all.vars(x$terms)[1]
-        #bpres <- NA
-        #try(bpres <- bptest(m$terms)[4], silent = T)
-
-  if (is.null(x$ModelType))
-    x$ModelType <- 'Ordinary least squares regression model'
-  NextMethod()
-}
-
-ModelPrintObject.glm <- function(x)
-{
-  warning('Basic glm support: Not all model details are supported.')
-x$qr
-
-
-
-
-
-  x$ModelType <-  paste('Ordinary least squares regression model: ', x$family$family, '/', x$family$link, sep ='')
-
-  NextMethod()
-}
-
-
-ModelPrintObject.selection <- function(x)
-{
-  #x <- a
-  xx <- summary(x)
-  x$Statistics <- append(x$Statistics,
-                         list(
-                              NObs = x$param$nObs,
-                              R2 = xx$rSquared$R2,
-                              Sigma = x$sigma,
-                              DF = x$param$df,
-                              AdjR2 =  xx$rSquared$R2adj,
-                              Mills = x$param$index$Mills,
-                              Weights = ifelse(is.null(x$weights),"no", "yes")
-                             ))
-
-
-  CoefTemp     <- cbind(Coefficient = xx$estimate[, 'Estimate'],
-                        SE = xx$estimate[, 'Std. Error'],
-                        TStat = xx$estimate[, 't value'],
-                        Normal= NA,  # Normal
-                        PValue = xx$estimate[, 'Pr(>|t|)'],
-                        SpecialText = NA
-                       )
-  CoefSelection <- CoefTemp[x$param$index$betaS, ]
-  CoefTemp <- CoefTemp[x$param$index$betaO, ]
-
-
-  x$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-  x$CoefValues.Selection <- array(CoefSelection, dim = c(nrow(CoefSelection),1,6), dimnames = list(rownames(CoefSelection), 'a', colnames(CoefSelection)))
-
-  x$DependentVariable <- NA
-  x$ModelType <- 'Heckit'
-  return(x)
-
-}
-
-
-
-
-ModelPrintObject.glmerMod <- function(x)
-{
-  warning('glmerMod is only partially supported by mmp yet. Only fixed effects are printed.')
-
-  y <- list()
-#  y$Statistics <- append(y$Statistics,
-#                         list(
-#                              R2 = x$stats['R2'],
-#                              LogLik = x$stats['Model L.R.'],
-#                              G = x$stats['g'],
-#                              Sigma = x$stats['Sigma']
-#                             ))
-
-  CoefTemp     <- cbind(Coefficient = fixef(x),
-                        SE = sqrt(diag(vcov(x, use.hessian = T))),
-                        TStat = NA,
-                        Normal= fixef(x)/sqrt(diag(vcov(x, use.hessian = T))),
-                        PValue = NA,
-                        SpecialText = NA
-                       )
-
-  loc <- grep("^\\(Intercept\\)$", rownames(CoefTemp), perl = T)
-  if (length(loc)>0) rownames(CoefTemp)[loc] <- "Intercept"
-
-  CoefTemp[, 'PValue'] <- unlist(lapply(CoefTemp[, 'Normal'], GetPValueFromNormal))
-  y$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-
-
-  y$DependentVariable <- colnames(model.frame(x))[1]
-  y$ModelType <- paste('Generalized linear mixed-effects models; link:',family(x)$link, sep =' ')
-  return(y)
-}
-
-ModelPrintObject.lmerMod <- function(x)
-{
-  warning('lmerMod is only partially supported by mmp yet. Only fixed effects are printed.')
-  #require(r2glmm)
-  library("piecewiseSEM")
-  y <- list()
-#  y$Statistics <- append(y$Statistics,
-#                         list(
-#                              R2 = x$stats['R2'],
-#                              LogLik = x$stats['Model L.R.'],
-#                              G = x$stats['g'],
-#                              Sigma = x$stats['Sigma']
-#                             ))
-
-  CoefTemp     <- cbind(Coefficient = fixef(x),
-                        SE = sqrt(diag(vcov(x, use.hessian = F))),
-                        TStat = NA,
-                        Normal= fixef(x)/sqrt(diag(vcov(x, use.hessian = F))),
-                        PValue = NA,
-                        SpecialText = NA
-                       )
-
-  loc <- grep("^\\(Intercept\\)$", rownames(CoefTemp), perl = T)
-  if (length(loc)>0) rownames(CoefTemp)[loc] <- "Intercept"
-
-  CoefTemp[, 'PValue'] <- unlist(lapply(CoefTemp[, 'Normal'], GetPValueFromNormal))
-  y$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-
-  y$Statistics <- append(y$Statistics,
-                         list(
-                              NObs = nobs(x),
-                              R2 = paste0(round(rsquared(x)$Marginal, digits=2), ', ', round(rsquared(x)$Conditional, digits=2))
-                             ))
-
-
-
-
-  y$DependentVariable <- colnames(model.frame(x))[1]
-  y$ModelType <- paste('Linear mixed-effects models; link:',family(x)$link, sep =' ')
-  return(y)
-}
-
-
-
-
-ModelPrintObject.boot <- function(x)
-{
-
-  warning('Preliminary support for boot only.')
-
-
-  CoefTemp     <- cbind(Coefficient = x$t0,
-                        SE = apply(x$t, 2, sd),
-                        TStat = NA,
-                        Normal= x$t0/apply(x$t, 2, sd),
-                        PValue = NA,
-                        SpecialText = NA
-                       )
-
-
-  CoefTemp[, 'PValue'] <- unlist(lapply(CoefTemp[, 'Normal'], GetPValueFromNormal))
-  x$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-
-  x$ModelType <-'boot object'
-  NextMethod()
-}
-
-ModelPrintObject.tobit <- function(x)
-{
-  warning('Preliminary support for tobit only.')
-
-  x$Statistics <- append(x$Statistics,
-                         list(
-                              Iterations = x$iter,
-                              LogLik = x$loglik[2],
-                              Scale = x$scale,
-                              DF =x$df
-                             ))
-
-  TempSE <- sqrt(diag(x$var))[-nrow(x$var)]
-  CoefTemp     <- cbind(Coefficient = x$coefficients,
-                        SE = TempSE,
-                        TStat = NA,
-                        Normal= x$coefficients/TempSE,
-                        PValue = NA,
-                        SpecialText = NA
-                       )
-
-  CoefTemp[, 'PValue'] <- unlist(lapply(CoefTemp[, 'Normal'], GetPValueFromNormal))
-  x$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-
-  x$DependentVariable <- all.vars(x$terms)[1]
-  x$ModelType = 'Tobit Regression'
-  NextMethod()
-}
-
-ModelPrintObject.DiscreteEffects <- function(x)
-{
-  CoefTemp     <- cbind(Coefficient = x$Estimate,
-                        SE = x$SE,
-                        TStat = NA,
-                        Normal= x$Estimate/x$SE,
-                        PValue = x$pvalue,
-                        SpecialText = NA
-                       )
-  y <- list()
-  y$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-  rownames(y$CoefValues) <- sub('^DE', "", rownames(x) )
-  y$ModelType <- 'Discrete Effect'
-  return(y)
-}
-
-ModelPrintObject.CoefTest <- function(x)
-{
-  warning('Untested ModelPrintObject. Probably requires output to be a list.')
-  CoefTemp     <- cbind(Coefficient = x$Estimate,
-                        SE = x$SE,
-                        TStat = NA,
-                        Normal= x$Estimate/x$SE,
-                        PValue = x$pvalue,
-                        SpecialText = NA
-                       )
-  CoefTemp[, 'PValue'] <- unlist(lapply(CoefTemp[, 'Normal'], GetPValueFromNormal))
-  x$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-  rownames(x$CoefValues) <- sub('^DE', "", rownames(x) )
-  x$ModelType <- 'Coef Test'
-  NextMethod()
-}
-
-ModelPrintObject.SummaryStat <- function(x)
-{
-  warning('Untested ModelPrintObject. Probably requires output to be a list.')
-  CoefTemp     <- cbind(Coefficient = x,
-                        SE = NA,
-                        TStat = NA,
-                        Normal= NA,
-                        PValue = NA,
-                        SpecialText = NA
-                       )
-  if (is.null(names(x))) rownames(CoefTemp) <- rownames(x)
-  x$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-  rownames(x$CoefValues) <- sub('^DE', "", rownames(x) )
-  x$ModelType <- 'SummaryStat'
-  NextMethod()
-}
-
-
-ModelPrintObject.data.frame <- function(x)
-{
-#  warning('Untested ModelPrintObject. Probably requires output to be a list.')
-#  CoefTemp     <- cbind(Coefficient = x[,1],
-#                        SE = NA,
-#                        TStat = NA,
-#                        Normal= NA,
-#                        PValue = NA,
-#                        SpecialText = NA
-#                       )
-#  if (is.null(names(x))) rownames(CoefTemp) <- rownames(x)
-#  x$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
-#  rownames(x$CoefValues) <- sub('^DE', "", rownames(x) )
-#  x$ModelType <- 'Generic data.frame'
-  NextMethod()
-}
-
-
-#.........................................................
-
-
 
 GetPValue <- function(Stats, StatsType)
 {
@@ -538,10 +27,6 @@ GetPValueFromTStat <- function(Stats, DF)
   if (is.null(Stats) || is.na(Stats)) return(NA)
     return(2* (1- pt(abs(Stats), DF)))
 }
-
-
-
-
 
 #!2 GetStars.Text
   GetStars.Text <- function(PValue, StarBreaks=c(-Inf, 0.01, 0.05, 0.1, Inf))
@@ -896,7 +381,13 @@ c(
 "Iterations"            , "Iterations"          , "Iterations"        , "Iterations"       ,
 "Scale"                 , "Scale"               , "Scale"             , "Scale"            ,
 "StandardErrorInfo"     , "StandardErrorInfo"   , "Standard Errors"   , "Standard Errors"  ,
-"Weights"               , "Weights"             , "Weights"           , "Weights"
+"Weights"               , "Weights"             , "Weights"           , "Weights"          ,
+"NObsLR"               , "NObsLR"              , "N (l/r)"           , "N (l/r)"          ,
+"EffNObsLR"             , "EffNObsLR"           , "Effective N (l/r)" , "Effective N (l/r)",
+"Kernel"                , "Kernel"              , "Kernel"            , "Kernel"           ,
+"BWEst"                 , "BWEst"               , "Bandwidths est."   , "Bandwidths est."  ,
+"BWBias"                , "BWBias"              , "Bandwidths bias"   , "Bandwidths bias"  ,
+"Rho"                   , "Rho"                 , "Rho"               , "Rho"
   ), byrow=T, ncol=4)
 
 ModelInfo <- data.frame(ModelInfo, stringsAsFactors =F)
@@ -930,11 +421,10 @@ if (length(ShowDependentVariable) == 1 && is.logical(ShowDependentVariable) &&  
 errm <- BottomMatter[!BottomMatter %in% ModelInfo$External]
 if (length(errm)>0) stop(paste('Undefined model infos supplied:', paste(errm, collapse = ', ')), sep=' ')
 
-
 # ModelPrintObject extracts all data (such as coefficients and test statistics) from the model and returns it
 # in a standardizied frame which can be understood by multi model print.
 models <- lapply(AllModels, ModelPrintObject)
-
+models <- lapply(models, ConvertNewToOldMPO)
 # This loop adds the model names and replaces standard errors by those provided via CoefTest.
 # Model names:
 #      They are assigned in the following way:  1. Names provided by the user via ModelNames.
@@ -970,24 +460,7 @@ for (i in 1:length(AllModels))
       models[[i]]$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
       # check: ^DE still required?
       rownames(models[[i]]$CoefValues) <- sub('^DE', "", rownames(models[[i]]$CoefValues))
-# -----------
 
-# OLD
-#      models[[i]]$CoefValues[, 1, 'Coefficient'] <- CoefTests[[i]][, 'Estimate']
-#      models[[i]]$CoefValues[, 1, 'SE'] <- CoefTests[[i]][, 'Std. Error']
-#      if ('t value' %in% colnames(CoefTests[[i]]))
-#      {
-#        models[[i]]$CoefValues[, 1, 'TStat'] <- CoefTests[[i]][, 't value']
-#        models[[i]]$CoefValues[, 1, 'PValue'] <- CoefTests[[i]][, 'Pr(>|t|)']
-#      }else{if ('z value' %in% colnames(CoefTests[[i]]))
-#              {
-#                models[[i]]$CoefValues[, 1, 'Normal'] <- CoefTests[[i]][, 'z value']
-#                models[[i]]$CoefValues[, 1, 'PValue'] <- CoefTests[[i]][, 'Pr(>|z|)']
-#              }else{
-#                stop('Unknown coeftest.')
-#              }
-#           }
-# --------------
 
       models[[i]]$Statistics$StandardErrorInfo <- 'SE by coeftest()'
 #        rownames( models[[j]][[1]] ) <- rownames(CoefTests[[j]])
@@ -1152,11 +625,18 @@ if ( length(GenPos <- grep('<Generic>',   names(CoefNames), perl = T)) >0 )
     ExtractModelInfoOrEmptyString <- function(x, MInf)
     {
       #MInf <- MInfo$Internal
-      x$Statistics[MInfo$Internal]
-      tmp <- lapply(MInf, function(y)  setNames(ifelse(is.null(unlist(x$Statistics[y])), '', x$Statistics[y]), y))
+      #MInfo <- x$Statistics[MInfo$Internal]
+      CoerceLists <- function(x)
+      {
+        if (!is.list(x)) return(x)
+        return(paste(lapply(x$x, FormatNumber), collapse = x$collapse))
+      }
+      Stats <- lapply(x$Statistics, CoerceLists)
+      tmp <- lapply(MInf, function(y)  setNames(ifelse(is.null(unlist(Stats[y])), '', Stats[y]), y))
       return(data.frame(unlist(tmp)))
     }
-    RawBottomMatter <- lapply(models, ExtractModelInfoOrEmptyString, MInf =MInfo$Internal)
+    #browser()
+    RawBottomMatter <- lapply(models, ExtractModelInfoOrEmptyString, MInf = MInfo$Internal)
     RawBottomMatter <- do.call(cbind, RawBottomMatter)
     DoAppendBottomMatter <- nrow(RawBottomMatter)>0
   }
