@@ -31,7 +31,7 @@ View(mmp(list(mod1, mod2, mod3)))
 # Example 2
 View(mmp(list(Baseline = mod1, "Some Controls" = mod2, "More Controls" = mod3, "Awful" = mod4)))
 # Example 3
-View(mmp(list(Baseline = mod1, "Some Controls" = mod2, "More Controls" = mod3, "Fixed Effects" = mod4, "Interaction" = mod5),
+View(TabRes1 <- mmp(list(Baseline = mod1, "Some Controls" = mod2, "More Controls" = mod3, "Fixed Effects" = mod4, "Interaction" = mod5),
          CoefNames = list("Female first" = "fem", "<Generic>", "Experience at the end" = "exp"),
          Factors = list("Individual FE" = "id"),
          BottomMatter = c("N", "r.squared", "f-statistics", "DF")))
@@ -43,16 +43,22 @@ View(mmp(list(M8 = mod8, M9 = mod9, M10 = mod10),
          CoefTests = list(NULL, mod9c), ShowDependentVariable = T, ShowModelType = T,
          BottomMatter = c("StandardErrorInfo")))
 
-View(mmp(list(M8 = mod8, M9 = mod9, M10 = mod10),
+View(TabRes2 <- mmp(list(M8 = mod8, M9 = mod9, M10 = mod10),
          CoefNames = list("<Generic>", "Uninteresting variables" = "(ind)|(ms)"),
          CoefTests = list(NULL, mod9c), ShowDependentVariable = T, ShowModelType = T,
          Factors   = list("Uninteresting variables"),
          BottomMatter = c("StandardErrorInfo")))
 
 # Example 6
-# write.table(mmp(list(M8 = mod8, M9 = mod9, M10 = mod10),
-#               CoefNames = list("<Generic>", "Uninteresting variables" = "(ind)|(ms)"),
-#               CoefTests = list(NULL, mod9c), ShowDependentVariable = T, ShowModelType = T,
-#               Factors   = list("Uninteresting variables"),
-#               BottomMatter = c("StandardErrorInfo")), file =  "test.csv", sep = ";")
+# write.table(TabRes, file =  "test.csv", sep = ";")
+
+# Example 7
+
+#write.table(TabRes, 'clipboard-128', sep='\t')
+
+# Example 8
+#ResultsToExcel(x = mget(objects(pattern='TabRes')), NamesPrefix = "",  FileName = file.path(resultsdir, paste0("", 'TabResults.xlsx')), OverwriteTabs = F)
+
+
+
 
