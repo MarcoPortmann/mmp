@@ -418,12 +418,18 @@ if (length(ShowDependentVariable) == 1 && is.logical(ShowDependentVariable) &&  
 #!2 Function starts here
 
 # Check whether requested bottom matter variables exist, raise error otherwise.
-errm <- BottomMatter[!BottomMatter %in% ModelInfo$External]
-if (length(errm)>0) stop(paste('Undefined model infos supplied:', paste(errm, collapse = ', ')), sep=' ')
+# dev m.p.
+AllStats <- do.call(rbind, lapply(AllModels, ModelPrintDescription))
+if (is.null(BottomMatter) | "<default>" %in% BottomMatter)
+  ---> subset(AllStats, Default == T)
+---> ReqStats <-
+errm <- BottomMatter[!BottomMatter %in% AllStats$Stats]
+if (length(errm)>0) warning(paste('Undefined model infos supplied:', paste(errm, collapse = ', ')), sep=' ')
 
 # ModelPrintObject extracts all data (such as coefficients and test statistics) from the model and returns it
 # in a standardizied frame which can be understood by multi model print.
-models <- lapply(AllModels, ModelPrintObject)
+# dev m.p.
+models <- lapply(AllModels, ModelPrintObject, ReqStats)
 models <- lapply(models, ConvertNewToOldMPO)
 # This loop adds the model names and replaces standard errors by those provided via CoefTest.
 # Model names:

@@ -73,7 +73,7 @@ ModelPrintObject.rms <- function(x)
   return(x)
 }
 
-ModelPrintObject.rdrobust <- function(x)
+ModelPrintObject.rdrobust <- function(x, Stats = NULL)
 {
   y <- list(Coefficients = list(Main = data.frame(Coef = as.numeric(x$coef),
                                                   SE = as.numeric(x$se),
@@ -97,6 +97,20 @@ ModelPrintObject.rdrobust <- function(x)
                      Statistics = c("NObs", "NObsLR", "EffNObsLR", "Kernel", "BWEst", "BWBias", "Rho"))
   y$mmpVers <- 2.0
   return(y)
+}
+
+
+# dev m.p.
+ModelPrintDescription.rdrobust <- function(x)
+{
+ Stats <- data.frame(Stats = c("NObs", "NObsLR", "EffNObsLRKernel", "BWEst", "BWBias", "Rho"),
+                     Default = c(rep(T, 6))
+                     #LabelShort = c("N. obs.", ...)
+                     #LabelLong = ?
+                     #Language support? LaTeX?
+                     # Formatting rules like collapse and number format (if not default shall be used)
+                    )
+  return(list(Statistics = Stats))
 }
 
 
