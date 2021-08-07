@@ -1,16 +1,28 @@
-#!2 Extract model information from different classes
-#
-#
-ModelPrintObject <- function(x) UseMethod('ModelPrintObject')
+
+#' Extract model information from different classes
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
+ModelPrintObject <- function(x){
+  UseMethod('ModelPrintObject', x)
+}
 #
 
 
+#' ConvertNewToOldMPO
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ConvertNewToOldMPO <- function(x)
 {
   if (!("mmpVers" %in% names(x) && x$mmpVers >= 2))
     return(x)
-
-
 
   x$CoefValues <- array(NA, dim = c(nrow(x$Coefficients$Main),1,6), dimnames = list(rownames(x$Coefficients$Main), 'a', c("Coefficient", "SE", "TStat", "Normal", "PValue", "special")))
   x$CoefValues[,"a", "Coefficient"] <- x$Coefficients$Main$Coef
@@ -29,11 +41,26 @@ ConvertNewToOldMPO <- function(x)
 
 
 
+#' ModelPrintObject.default
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.default <- function(x)
 {
   return(x)
 }
 
+
+#' ModelPrintObject.rms
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.rms <- function(x)
 {
   x$Statistics <- append(x$Statistics,
@@ -73,6 +100,13 @@ ModelPrintObject.rms <- function(x)
   return(x)
 }
 
+#' ModelPrintObject.rdrobust
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.rdrobust <- function(x)
 {
   y <- list(Coefficients = list(Main = data.frame(Coef = as.numeric(x$coef),
@@ -99,7 +133,13 @@ ModelPrintObject.rdrobust <- function(x)
   return(y)
 }
 
-
+#' ModelPrintObject.lrm
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.lrm <- function(x)
 {
   x$Statistics$Freq <- x$freq
@@ -122,6 +162,13 @@ ModelPrintObject.lrm <- function(x)
   NextMethod()
 }
 
+#' ModelPrintObject.ols
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.ols <- function(x)
 {
   x$Statistics <- append(x$Statistics,
@@ -150,6 +197,13 @@ ModelPrintObject.ols <- function(x)
   NextMethod()
 }
 
+#' ModelPrintObject.felm
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.felm <- function(x)
 {
   xsum <- summary(x)
@@ -187,6 +241,72 @@ ModelPrintObject.felm <- function(x)
   NextMethod()
 }
 
+
+
+
+#' ModelPrintObject.fixest
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
+ModelPrintObject.fixest <- function(x)
+{
+  #xsum <- summary(x)
+  y <-list()
+  y$Statistics <-
+                         list(
+                           NObs =x$nobs,
+                           R2 = fitstat(x, type = "r2", simplify = TRUE),
+                           Sigma = x$sigma2,
+                           DF = NA,
+                           AdjR2 = fitstat(x, type = "ar2", simplify = TRUE),
+                           Weights = NA
+                         )
+
+  CoefTemp     <- cbind(Coefficient = x$coeftable[, 1],
+                        SE =  x$coeftable[, 2],                 # Std. Error
+                        TStat =  x$coeftable[, 3],
+                        Normal= NA,  # Normal
+                        PValue =  x$coeftable[, 4],
+                        SpecialText = NA
+  )
+  rownames(CoefTemp) <- rownames(x$coeftable)
+
+  if (!is.null(x$fixef_vars) && length(x$fixef_vars)>0)
+  {
+    y$FixedEffects <- x$fixef_vars
+    CoefTemp <- rbind(CoefTemp,
+                      matrix(NA, nrow = length(x$fixef_vars),
+                             ncol = 6,
+                             dimnames = list(paste0("FE>>",
+                                                    x$fixef_vars),
+                                             NULL)))
+  }
+
+  y$CoefValues <- array(CoefTemp, dim = c(nrow(CoefTemp),1,6), dimnames = list(rownames(CoefTemp), 'a', colnames(CoefTemp)))
+  y$DependentVariable <- terms(x$fml_all$linear)[[2]]
+  if (!is.null(x$summary_flags) && length(x$summary_flags$cluster) > 0) x$Statistics$StandardErrorInfo <- paste0('Clustered on: ', paste(x$summary_flags$cluster, collapse = ', '))
+
+  y$ModelType <- 'Ordinary least squares regression model'
+  return(y)
+}
+
+
+
+
+
+
+
+
+#' ModelPrintObject.felm
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.summary.felm <- function(x)
 {
   #xsum <- summary(x)
@@ -227,7 +347,13 @@ ModelPrintObject.summary.felm <- function(x)
 }
 
 
-
+#' ModelPrintObject.plm
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.plm <- function(x)
 {
   warning('plm objects are processed slowly and incompletely.')
@@ -261,7 +387,13 @@ ModelPrintObject.plm <- function(x)
 
 
 
-
+#' ModelPrintObject.lm
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.lm <- function(x)
 {
 
@@ -316,7 +448,13 @@ ModelPrintObject.glm <- function(x)
   NextMethod()
 }
 
-
+#' ModelPrintObject.selection
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.selection <- function(x)
 {
   #x <- a
@@ -355,7 +493,13 @@ ModelPrintObject.selection <- function(x)
 
 
 
-
+#' ModelPrintObject.glmerMod
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.glmerMod <- function(x)
 {
   warning('glmerMod is only partially supported by mmp yet. Only fixed effects are printed.')
@@ -389,6 +533,13 @@ ModelPrintObject.glmerMod <- function(x)
   return(y)
 }
 
+#' ModelPrintObject.lmerMod
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.lmerMod <- function(x)
 {
   warning('lmerMod is only partially supported by mmp yet. Only fixed effects are printed.')
@@ -433,7 +584,13 @@ ModelPrintObject.lmerMod <- function(x)
 
 
 
-
+#' ModelPrintObject.boot
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.boot <- function(x)
 {
 
@@ -456,6 +613,13 @@ ModelPrintObject.boot <- function(x)
   NextMethod()
 }
 
+#' ModelPrintObject.boot
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.tobit <- function(x)
 {
   warning('Preliminary support for tobit only.')
@@ -485,6 +649,13 @@ ModelPrintObject.tobit <- function(x)
   NextMethod()
 }
 
+#' ModelPrintObject.DiscreteEffects
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.DiscreteEffects <- function(x)
 {
   CoefTemp     <- cbind(Coefficient = x$Estimate,
@@ -501,6 +672,15 @@ ModelPrintObject.DiscreteEffects <- function(x)
   return(y)
 }
 
+
+#' ModelPrintObject.CoefTest
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#'
+#' @examples
 ModelPrintObject.CoefTest <- function(x)
 {
   warning('Untested ModelPrintObject. Probably requires output to be a list.')
@@ -518,6 +698,13 @@ ModelPrintObject.CoefTest <- function(x)
   NextMethod()
 }
 
+#' ModelPrintObject.SummaryStat
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.SummaryStat <- function(x)
 {
   warning('Untested ModelPrintObject. Probably requires output to be a list.')
@@ -535,7 +722,13 @@ ModelPrintObject.SummaryStat <- function(x)
   NextMethod()
 }
 
-
+#' ModelPrintObject.data.frame
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#' @examples
 ModelPrintObject.data.frame <- function(x)
 {
   #  warning('Untested ModelPrintObject. Probably requires output to be a list.')

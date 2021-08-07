@@ -1,13 +1,18 @@
 Package: mmp
 Type: Package
 Title: Prints several model results in a user-friendly table
-Version: 0.1.0
+Version: 0.2.0
 Author: Marco Portmann
 Maintainer: Marco Portmann <marcoportmann@hotmail.com>
 Description: The package prints several results of different regression models in a clear table and enables them to be exported to publications.
 License: GNU GPLv3
 Encoding: UTF-8
 Imports:
-    Hmisc, abind
+    Hmisc,
+    lmtest,
+    abind
 LazyData: true
-RoxygenNote: 6.1.1
+RoxygenNote: 7.1.1
+Collate: 
+    'ModelPrintObjects.R'
+    'PrintModels.r'

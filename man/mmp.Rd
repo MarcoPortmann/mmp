@@ -4,17 +4,27 @@
 \alias{mmp}
 \title{Multi-model printing}
 \usage{
-mmp(AllModels, CoefNames = "<Generic>", Decimals = 4,
-  WriteToClipboard = F, CoefOnly = F, CoefTests = NULL,
-  Factors = NULL, BottomMatter = c("r.squared", "Brier", "N"),
-  ModelNames = NULL, ShowDependentVariable = F, ShowModelType = F)
+mmp(
+  AllModels,
+  CoefNames = "<Generic>",
+  Decimals = 4,
+  WriteToClipboard = F,
+  CoefOnly = F,
+  CoefTests = NULL,
+  Factors = NULL,
+  BottomMatter = c("r.squared", "Brier", "N"),
+  ModelNames = NULL,
+  ShowDependentVariable = F,
+  ShowModelType = F
+)
 }
 \arguments{
 \item{AllModels}{List containing all model output objects. If the objects are named, the names will be used as headers.}
 
 \item{CoefNames}{List with coefficient names.}
+}
+\value{
 
-\item{ShowModelType}{}
 }
 \description{
 Multi-model printing

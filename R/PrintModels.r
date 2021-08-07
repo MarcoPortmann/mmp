@@ -1,10 +1,20 @@
 #! multi-model print
 
 # Author: Marco Portmann
-# Last change: 05.11.2019
+# Last change: 07.08.2021
 #
 #
 
+
+
+#' Get P-value
+#'
+#' @param Stats
+#' @param StatsType
+#'
+#' @return
+#' @keywords internal
+#' @examples
 GetPValue <- function(Stats, StatsType)
 {
   if (is.null(Stats) || is.na(Stats) || is.null(StatsType) || is.na(StatsType)) return(NA)
@@ -16,11 +26,19 @@ GetPValue <- function(Stats, StatsType)
 }
 
 
+#' Get P-value from normal
+#'
+#' @param Stats
+#'
+#' @return
+#' @keywords internal
+#' @examples
 GetPValueFromNormal <- function(Stats)
   {
     if (is.null(Stats) || is.na(Stats)) return(NA)
       return(2* (1- pnorm(abs(Stats))))
   }
+
 
 GetPValueFromTStat <- function(Stats, DF)
 {
@@ -28,7 +46,17 @@ GetPValueFromTStat <- function(Stats, DF)
     return(2* (1- pt(abs(Stats), DF)))
 }
 
-#!2 GetStars.Text
+
+
+
+#' Get stars text
+#'
+#' @param PValue
+#' @param StarBreaks
+#'
+#' @return
+#' @keywords internal
+#' @examples
   GetStars.Text <- function(PValue, StarBreaks=c(-Inf, 0.01, 0.05, 0.1, Inf))
   {
     if (is.null(PValue) || is.na(PValue) || (!is.numeric(PValue) && !is.numeric(type.convert(PValue)))) return('')
@@ -38,7 +66,16 @@ GetPValueFromTStat <- function(Stats, DF)
   }
 
 
-#!2 FormatNumber
+
+#' FormatNumber
+#'
+#' @param Num
+#' @param Decimals
+#' @param IsPercent
+#' @keywords internal
+#' @return
+  #' @keywords internal
+#' @examples
   FormatNumber <- function(Num, Decimals = 4, IsPercent = F)
   {
     if (is.null(Num) || is.na(Num) || (!is.numeric(Num) && !is.numeric(type.convert(Num)))) return('')
@@ -57,9 +94,23 @@ GetPValueFromTStat <- function(Stats, DF)
       return(res)
    }
 
-#!2 FormatCoefficientOutput.Text
 
   # c('Coefficient', 'SE', 'SomeStat', 'StatIndicator', 'PValue', 'SpecialText')
+#' FormatCoefficientOutput.Text
+#'
+#' @param Coefficient
+#' @param SE
+#' @param PValue
+#' @param SpecialText
+#' @param PrintStat
+#' @param Digits
+#' @param IsPercent
+#' @param CoefficientOnly
+#' @param SpecialTextList
+#' @keywords internal
+#' @return
+#'
+#' @examples
   FormatCoefficientOutput.Text <- function(Coefficient = NULL, SE = NULL, PValue = NULL, SpecialText = NULL, PrintStat = 'SE', Digits = 4, IsPercent = F, CoefficientOnly = F, SpecialTextList = list('-3' = '', '-2' = 'no', '-1' = 'yes'))
   {
     if (length(Coefficient)>1)
@@ -131,10 +182,9 @@ GetPValueFromTStat <- function(Stats, DF)
 #' @param ModelNames
 #' @param ShowDependentVariable
 #' @param ShowModelType
-#'
 #' @return
 #' @export
-#'
+#' @import Hmisc lmtest abind
 #' @examples
 mmp <- function(
 
